@@ -1,4 +1,6 @@
 ﻿@inherits LayoutComponentBase
+@inject CurrentUserService CurrentUser
+@inject NavigationManager NavigationManager
 
 <PageTitle>PersonalDiary</PageTitle>
 
@@ -9,7 +11,15 @@
 
     <main>
         <div class="top-row px-4">
-            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+            @if (CurrentUser.IsAuthenticated)
+            {
+                <span>Prijavljen kao: @CurrentUser.Username</span>
+                <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="Logout">Odjava</button>
+            }
+            else
+            {
+                <a href="/login">Prijava</a>
+            }
         </div>
 
         <article class="content px-4">
@@ -17,3 +27,11 @@
         </article>
     </main>
 </div>
+
+@code {
+    private void Logout()
+    {
+        CurrentUser.Clear();
+        NavigationManager.NavigateTo("/", true);
+    }
+}

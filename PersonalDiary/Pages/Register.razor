@@ -1,0 +1,53 @@
+﻿@page "/register"
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<h3>Registracija</h3>
+
+<EditForm Model="@registerModel" OnValidSubmit="@HandleRegister">
+    <div class="form-group mb-3">
+        <label>Korisničko ime:</label>
+        <InputText @bind-Value="registerModel.Username" class="form-control" />
+        <ValidationMessage For="@(() => registerModel.Username)" />
+    </div>
+
+    <div class="form-group mb-3">
+        <label>Lozinka:</label>
+        <InputText type="password" @bind-Value="registerModel.Password" class="form-control" />
+        <ValidationMessage For="@(() => registerModel.Password)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Registriraj se</button>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3">@errorMessage</div>
+    }
+</EditForm>
+
+@code {
+    private RegisterModel registerModel = new();
+    private string? errorMessage;
+
+    private async Task HandleRegister()
+    {
+        bool success = await AuthService.RegisterAsync(
+            registerModel.Username,
+            registerModel.Password
+        );
+
+        if (success)
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            errorMessage = "Korisničko ime već postoji.";
+        }
+    }
+
+    public class RegisterModel
+    {
+        public string Username { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+}

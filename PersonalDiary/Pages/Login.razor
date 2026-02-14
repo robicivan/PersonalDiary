@@ -1,0 +1,49 @@
+﻿@page "/login"
+@inject AuthService AuthService
+@inject CurrentUserService CurrentUser
+@inject NavigationManager NavigationManager
+
+<h3>Prijava</h3>
+
+<EditForm Model="@loginModel" OnValidSubmit="@HandleLogin">
+    <div class="form-group mb-3">
+        <label>Korisničko ime:</label>
+        <InputText @bind-Value="loginModel.Username" class="form-control" />
+    </div>
+
+    <div class="form-group mb-3">
+        <label>Lozinka:</label>
+        <InputText type="password" @bind-Value="loginModel.Password" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Prijavi se</button>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3">@errorMessage</div>
+    }
+</EditForm>
+
+@code {
+    private LoginModel loginModel = new();
+    private string? errorMessage;
+
+    private async Task HandleLogin()
+    {
+        var user = await AuthService.LoginAsync(loginModel.Username, loginModel.Password);
+        if (user != null)
+        {
+            CurrentUser.SetUser(user.Id, user.Username);
+            NavigationManager.NavigateTo("/diary");
+        }
+        else
+        {
+            errorMessage = "Pogrešno korisničko ime ili lozinka.";
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Username { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+}

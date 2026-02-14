@@ -1,0 +1,103 @@
+﻿@page "/diary"
+@inject AppDbContext DbContext
+@inject CurrentUserService CurrentUser
+@inject NavigationManager NavigationManager
+@inject NavigationManager Nav
+
+<h3>Moj dnevnik</h3>
+
+@if (!CurrentUser.IsAuthenticated)
+{
+    <p>Niste prijavljeni. <a href="/login">Prijavite se</a></p>
+}
+else
+{
+    <button class="btn btn-success mb-3" @onclick="GoToNew">Novi zapis</button>
+
+    @if (entries == null)
+    {
+        <p><em>Učitavanje...</em></p>
+    }
+    else if (!entries.Any())
+    {
+        <p>Trenutno ne postoji nijedan zapis.</p>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Naslov</th>
+                    <th>Datum</th>
+                    <th>Šifrirano</th>
+                    <th>Akcije</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in entries)
+                {
+                    <tr>
+                        <td>@entry.Title</td>
+                        <td>@entry.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            @if (entry.IsEncrypted)
+                            {
+                                <span class="badge bg-warning">DA</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">NE</span>
+                            }
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" @onclick="() => ViewEntry(entry.Id)">Pregled</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => DeleteEntry(entry.Id)">Obriši</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private List<DiaryEntry> entries = new();
+
+    private void GoToNew()
+    {
+        Nav.NavigateTo("/diary/new");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!CurrentUser.IsAuthenticated)
+            return;
+
+        await LoadEntries();
+    }
+
+    private async Task LoadEntries()
+    {
+        entries = await DbContext.DiaryEntries
+            .Where(e => e.UserId == CurrentUser.UserId)
+            .OrderByDescending(e => e.CreatedAt)
+            .ToListAsync();
+    }
+
+    private void ViewEntry(int id)
+    {
+        NavigationManager.NavigateTo($"/diary/{id}");
+    }
+
+    private async Task DeleteEntry(int id)
+    {
+        var entry = await DbContext.DiaryEntries.FindAsync(id);
+        if (entry != null && entry.UserId == CurrentUser.UserId)
+        {
+            DbContext.DiaryEntries.Remove(entry);
+            await DbContext.SaveChangesAsync();
+            await LoadEntries();
+            StateHasChanged();
+        }
+    }
+}

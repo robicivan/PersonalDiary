@@ -10,8 +10,10 @@ namespace PersonalDiary.Services
 
         public EncryptionService(IConfiguration configuration)
         {
-            var keyString = configuration["Encryption:Key"];
-            var ivString = configuration["Encryption:IV"];
+            var keyString = configuration["Encryption:Key"]
+                ?? throw new InvalidOperationException("Encryption:Key is not configured.");
+            var ivString = configuration["Encryption:IV"]
+                ?? throw new InvalidOperationException("Encryption:IV is not configured.");
 
             _key = Encoding.UTF8.GetBytes(keyString);
             _iv = Encoding.UTF8.GetBytes(ivString);

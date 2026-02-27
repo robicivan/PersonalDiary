@@ -1,10 +1,13 @@
-﻿@page "/register"
+@page "/register"
 @inject AuthService AuthService
 @inject NavigationManager NavigationManager
+@using System.ComponentModel.DataAnnotations
 
 <h3>Registracija</h3>
 
 <EditForm Model="@registerModel" OnValidSubmit="@HandleRegister">
+    <DataAnnotationsValidator />
+
     <div class="form-group mb-3">
         <label>Korisničko ime:</label>
         <InputText @bind-Value="registerModel.Username" class="form-control" />
@@ -15,6 +18,12 @@
         <label>Lozinka:</label>
         <InputText type="password" @bind-Value="registerModel.Password" class="form-control" />
         <ValidationMessage For="@(() => registerModel.Password)" />
+    </div>
+
+    <div class="form-group mb-3">
+        <label>Potvrda lozinke:</label>
+        <InputText type="password" @bind-Value="registerModel.ConfirmPassword" class="form-control" />
+        <ValidationMessage For="@(() => registerModel.ConfirmPassword)" />
     </div>
 
     <button type="submit" class="btn btn-primary">Registriraj se</button>
@@ -47,7 +56,19 @@
 
     public class RegisterModel
     {
+        [Required(ErrorMessage = "Korisničko ime je obavezno.")]
+        [StringLength(20, MinimumLength = 3, ErrorMessage = "Korisničko ime mora imati između 3 i 20 znakova.")]
+        [RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "Korisničko ime smije sadržavati samo slova, brojeve i podvlaku (_).")]
         public string Username { get; set; } = "";
+
+        [Required(ErrorMessage = "Lozinka je obavezna.")]
+        [StringLength(100, MinimumLength = 8, ErrorMessage = "Lozinka mora imati najmanje 8 znakova.")]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$",
+            ErrorMessage = "Lozinka mora sadržavati malo slovo, veliko slovo, broj i poseban znak.")]
         public string Password { get; set; } = "";
+
+        [Required(ErrorMessage = "Potvrda lozinke je obavezna.")]
+        [Compare(nameof(Password), ErrorMessage = "Lozinke se ne podudaraju.")]
+        public string ConfirmPassword { get; set; } = "";
     }
 }

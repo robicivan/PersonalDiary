@@ -54,8 +54,8 @@ else
                 entryModel.Title = existing.Title;
                 // Dešifriraj sadržaj ako je šifriran
                 entryModel.Content = existing.IsEncrypted
-                    ? EncryptionService.Decrypt(existing.EncryptedContent)
-                    : existing.EncryptedContent;
+                    ? EncryptionService.Decrypt(existing.Content)
+                    : existing.Content;
                 entryModel.IsEncrypted = existing.IsEncrypted;
             }
             else
@@ -90,11 +90,11 @@ else
 
         if (entryModel.IsEncrypted)
         {
-            entry.EncryptedContent = EncryptionService.Encrypt(entryModel.Content);
+            entry.Content = EncryptionService.Encrypt(entryModel.Content);
         }
         else
         {
-            entry.EncryptedContent = entryModel.Content; // čisti tekst
+            entry.Content = entryModel.Content; // čisti tekst
         }
 
         await DbContext.SaveChangesAsync();

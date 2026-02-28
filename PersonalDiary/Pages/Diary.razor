@@ -3,6 +3,7 @@
 @inject CurrentUserService CurrentUser
 @inject NavigationManager NavigationManager
 @inject NavigationManager Nav
+@inject EncryptionService EncryptionService
 @inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage LocalStorage
 
 <h3>Moj dnevnik</h3>
@@ -15,6 +16,18 @@ else
 {
     <div class="d-flex justify-content-between align-items-center mb-3">
         <button class="btn btn-success" @onclick="GoToNew">Novi zapis</button>
+    </div>
+
+    @* Search bar *@
+    <div class="mb-3 position-relative">
+        <input type="text" class="form-control pe-5" placeholder="Pretraži po naslovu ili sadržaju..."
+               @bind="searchQuery" @bind:event="oninput" />
+        @if (!string.IsNullOrEmpty(searchQuery))
+        {
+            <button class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 p-0 border-0 bg-transparent text-muted"
+                    style="font-size:1.1rem; line-height:1;" @onclick="ClearSearch"
+                    title="Obriši pretragu">✕</button>
+        }
     </div>
 
     @if (allTags.Any())
@@ -39,10 +52,30 @@ else
     }
     else if (!FilteredEntries.Any())
     {
-        <p>@(activeTag != null ? $"Nema zapisa s oznakom \"{activeTag}\"." : "Trenutno ne postoji nijedan zapis.")</p>
+        <p class="text-muted">
+            @if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                <span>Nema rezultata za „<strong>@searchQuery</strong>".</span>
+            }
+            else if (activeTag != null)
+            {
+                <span>Nema zapisa s oznakom „<strong>@activeTag</strong>".</span>
+            }
+            else
+            {
+                <span>Trenutno ne postoji nijedan zapis.</span>
+            }
+        </p>
     }
     else
     {
+        @if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            <p class="text-muted small mb-2">
+                @FilteredEntries.Count() @(FilteredEntries.Count() == 1 ? "rezultat" : "rezultata") za „<strong>@searchQuery</strong>"
+            </p>
+        }
+
         <table class="table table-striped">
             <thead>
                 <tr>
@@ -57,7 +90,7 @@ else
                 @foreach (var entry in FilteredEntries)
                 {
                     <tr>
-                        <td>@entry.Title</td>
+                        <td>@HighlightTitle(entry.Title)</td>
                         <td>
                             @foreach (var tag in entry.GetTagList())
                             {
@@ -91,11 +124,92 @@ else
     private List<DiaryEntry> entries = new();
     private List<string> allTags = new();
     private string? activeTag = null;
+    private string searchQuery = "";
+    private User? currentUser;
 
-    private IEnumerable<DiaryEntry> FilteredEntries =>
-        activeTag == null
-            ? entries
-            : entries.Where(e => e.GetTagList().Contains(activeTag));
+    // Decrypted content cache for searching
+    private Dictionary<int, string> decryptedCache = new();
+
+    private IEnumerable<DiaryEntry> FilteredEntries
+    {
+        get
+        {
+            var result = entries.AsEnumerable();
+
+            if (activeTag != null)
+                result = result.Where(e => e.GetTagList().Contains(activeTag));
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var q = searchQuery.Trim();
+                result = result.Where(e =>
+                    e.Title.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    GetSearchableContent(e).Contains(q, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return result;
+        }
+    }
+
+    private string GetSearchableContent(DiaryEntry entry)
+    {
+        if (!entry.IsEncrypted)
+            return entry.Content;
+
+        if (decryptedCache.TryGetValue(entry.Id, out var cached))
+            return cached;
+
+        if (currentUser == null)
+            return "";
+
+        try
+        {
+            var plain = EncryptionService.Decrypt(entry.Content, currentUser.EncryptionKey, currentUser.EncryptionIV);
+            decryptedCache[entry.Id] = plain;
+            return plain;
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    // Renders title with search term highlighted
+    private RenderFragment HighlightTitle(string title) => builder =>
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery) ||
+            !title.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+        {
+            builder.AddContent(0, title);
+            return;
+        }
+
+        var q = searchQuery.Trim();
+        int idx = title.IndexOf(q, StringComparison.OrdinalIgnoreCase);
+        int seq = 0;
+
+        while (idx >= 0)
+        {
+            if (idx > 0)
+                builder.AddContent(seq++, title[..idx]);
+
+            builder.OpenElement(seq++, "mark");
+            builder.AddAttribute(seq++, "class", "search-highlight");
+            builder.AddContent(seq++, title.Substring(idx, q.Length));
+            builder.CloseElement();
+
+            title = title[(idx + q.Length)..];
+            idx = title.IndexOf(q, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (title.Length > 0)
+            builder.AddContent(seq, title);
+    };
+
+    private void ClearSearch()
+    {
+        searchQuery = "";
+    }
 
     private void GoToNew()
     {
@@ -139,6 +253,8 @@ else
 
     private async Task LoadEntries()
     {
+        decryptedCache.Clear();
+        currentUser = await DbContext.Users.FindAsync(CurrentUser.UserId);
         entries = await DbContext.DiaryEntries
             .Where(e => e.UserId == CurrentUser.UserId)
             .OrderByDescending(e => e.CreatedAt)

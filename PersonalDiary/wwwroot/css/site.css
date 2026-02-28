@@ -322,3 +322,16 @@ a, .btn-link {
     background: var(--dt-border);
     border-radius: 4px;
 }
+
+/* ===== SEARCH HIGHLIGHT ===== */
+mark.search-highlight {
+    background-color: #fff176;
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+.dark-theme mark.search-highlight {
+    background-color: #5c4a00;
+    color: #ffd54f;
+}

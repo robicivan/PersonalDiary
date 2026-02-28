@@ -48,7 +48,9 @@ namespace PersonalDiary.Services
             {
                 Username = username,
                 PasswordHash = HashPassword(password),
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.Now,
+                EncryptionKey = EncryptionService.GenerateKey(),
+                EncryptionIV = EncryptionService.GenerateIV()
             };
 
             _db.Users.Add(user);

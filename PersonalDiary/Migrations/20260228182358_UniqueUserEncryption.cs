@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace PersonalDiary.Migrations
 {
     /// <inheritdoc />
-    public partial class tags : Migration
+    public partial class UniqueUserEncryption : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -19,7 +19,9 @@ namespace PersonalDiary.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Username = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EncryptionKey = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EncryptionIV = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {

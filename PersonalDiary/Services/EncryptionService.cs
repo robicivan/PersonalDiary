@@ -1,67 +1,77 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace PersonalDiary.Services
 {
     public class EncryptionService
     {
-        private readonly byte[] _key;
-        private readonly byte[] _iv;
-
-        public EncryptionService(IConfiguration configuration)
-        {
-            var keyString = configuration["Encryption:Key"]
-                ?? throw new InvalidOperationException("Encryption:Key is not configured.");
-            var ivString = configuration["Encryption:IV"]
-                ?? throw new InvalidOperationException("Encryption:IV is not configured.");
-
-            _key = Encoding.UTF8.GetBytes(keyString);
-            _iv = Encoding.UTF8.GetBytes(ivString);
-        }
-
-        public string Encrypt(string plainText)
+        /// <summary>
+        /// Encrypts plain text using the provided user-specific key and IV (both base64-encoded).
+        /// </summary>
+        public string Encrypt(string plainText, string keyBase64, string ivBase64)
         {
             if (string.IsNullOrEmpty(plainText))
                 return plainText;
 
-            using (Aes aes = Aes.Create())
+            var key = Convert.FromBase64String(keyBase64);
+            var iv = Convert.FromBase64String(ivBase64);
+
+            using Aes aes = Aes.Create();
+            aes.Key = key;
+            aes.IV = iv;
+
+            ICryptoTransform encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+
+            using MemoryStream ms = new MemoryStream();
+            using (CryptoStream cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+            using (StreamWriter sw = new StreamWriter(cs))
             {
-                aes.Key = _key;
-                aes.IV = _iv;
-
-                ICryptoTransform encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    using (CryptoStream cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-                    using (StreamWriter sw = new StreamWriter(cs))
-                    {
-                        sw.Write(plainText);
-                    }
-                    return Convert.ToBase64String(ms.ToArray());
-                }
+                sw.Write(plainText);
             }
+            return Convert.ToBase64String(ms.ToArray());
         }
 
-        public string Decrypt(string cipherText)
+        /// <summary>
+        /// Decrypts cipher text using the provided user-specific key and IV (both base64-encoded).
+        /// </summary>
+        public string Decrypt(string cipherText, string keyBase64, string ivBase64)
         {
             if (string.IsNullOrEmpty(cipherText))
                 return cipherText;
 
-            using (Aes aes = Aes.Create())
-            {
-                aes.Key = _key;
-                aes.IV = _iv;
+            var key = Convert.FromBase64String(keyBase64);
+            var iv = Convert.FromBase64String(ivBase64);
 
-                ICryptoTransform decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+            using Aes aes = Aes.Create();
+            aes.Key = key;
+            aes.IV = iv;
 
-                using (MemoryStream ms = new MemoryStream(Convert.FromBase64String(cipherText)))
-                using (CryptoStream cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
-                using (StreamReader sr = new StreamReader(cs))
-                {
-                    return sr.ReadToEnd();
-                }
-            }
+            ICryptoTransform decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+
+            using MemoryStream ms = new MemoryStream(Convert.FromBase64String(cipherText));
+            using CryptoStream cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
+            using StreamReader sr = new StreamReader(cs);
+            return sr.ReadToEnd();
+        }
+
+        /// <summary>
+        /// Generates a cryptographically random AES-256 key (32 bytes) as a base64 string.
+        /// </summary>
+        public static string GenerateKey()
+        {
+            var key = new byte[32];
+            RandomNumberGenerator.Fill(key);
+            return Convert.ToBase64String(key);
+        }
+
+        /// <summary>
+        /// Generates a cryptographically random AES IV (16 bytes) as a base64 string.
+        /// </summary>
+        public static string GenerateIV()
+        {
+            var iv = new byte[16];
+            RandomNumberGenerator.Fill(iv);
+            return Convert.ToBase64String(iv);
         }
     }
 }

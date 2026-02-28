@@ -12,8 +12,8 @@ using PersonalDiary.Data;
 namespace PersonalDiary.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260228143243_tags")]
-    partial class tags
+    [Migration("20260228182358_UniqueUserEncryption")]
+    partial class UniqueUserEncryption
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -74,6 +74,14 @@ namespace PersonalDiary.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("EncryptionIV")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EncryptionKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()

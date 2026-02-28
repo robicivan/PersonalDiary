@@ -10,5 +10,14 @@
         public DateTime? UpdatedAt { get; set; }
         public int UserId { get; set; }
         public User? User { get; set; }
+
+        // Tags section
+        public string Tags { get; set; } = string.Empty;
+
+        public List<string> GetTagList() =>
+            string.IsNullOrWhiteSpace(Tags)
+                ? new List<string>()
+                : Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                      .ToList();
     }
 }

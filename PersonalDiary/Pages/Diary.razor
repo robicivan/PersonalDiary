@@ -1,4 +1,4 @@
-﻿@page "/diary"
+@page "/diary"
 @inject AppDbContext DbContext
 @inject CurrentUserService CurrentUser
 @inject NavigationManager NavigationManager
@@ -13,15 +13,33 @@
 }
 else
 {
-    <button class="btn btn-success mb-3" @onclick="GoToNew">Novi zapis</button>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <button class="btn btn-success" @onclick="GoToNew">Novi zapis</button>
+    </div>
+
+    @if (allTags.Any())
+    {
+        <div class="mb-3">
+            <strong>Filtriraj po oznaci:</strong>
+            <div class="d-flex gap-2 flex-wrap mt-1">
+                <button class="btn btn-sm @(activeTag == null ? "btn-secondary" : "btn-outline-secondary")"
+                        @onclick="() => SetFilter(null)">Sve</button>
+                @foreach (var tag in allTags)
+                {
+                    <button class="btn btn-sm @(activeTag == tag ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="() => SetFilter(tag)">@tag</button>
+                }
+            </div>
+        </div>
+    }
 
     @if (entries == null)
     {
         <p><em>Učitavanje...</em></p>
     }
-    else if (!entries.Any())
+    else if (!FilteredEntries.Any())
     {
-        <p>Trenutno ne postoji nijedan zapis.</p>
+        <p>@(activeTag != null ? $"Nema zapisa s oznakom \"{activeTag}\"." : "Trenutno ne postoji nijedan zapis.")</p>
     }
     else
     {
@@ -29,16 +47,24 @@ else
             <thead>
                 <tr>
                     <th>Naslov</th>
+                    <th>Oznake</th>
                     <th>Datum</th>
                     <th>Šifrirano</th>
                     <th>Akcije</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var entry in entries)
+                @foreach (var entry in FilteredEntries)
                 {
                     <tr>
                         <td>@entry.Title</td>
+                        <td>
+                            @foreach (var tag in entry.GetTagList())
+                            {
+                                <span class="badge bg-primary me-1" style="cursor:pointer;"
+                                      @onclick="() => SetFilter(tag)">@tag</span>
+                            }
+                        </td>
                         <td>@entry.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
                         <td>
                             @if (entry.IsEncrypted)
@@ -63,10 +89,22 @@ else
 
 @code {
     private List<DiaryEntry> entries = new();
+    private List<string> allTags = new();
+    private string? activeTag = null;
+
+    private IEnumerable<DiaryEntry> FilteredEntries =>
+        activeTag == null
+            ? entries
+            : entries.Where(e => e.GetTagList().Contains(activeTag));
 
     private void GoToNew()
     {
         Nav.NavigateTo("/diary/new");
+    }
+
+    private void SetFilter(string? tag)
+    {
+        activeTag = tag;
     }
 
     protected override async Task OnInitializedAsync()
@@ -105,6 +143,12 @@ else
             .Where(e => e.UserId == CurrentUser.UserId)
             .OrderByDescending(e => e.CreatedAt)
             .ToListAsync();
+
+        allTags = entries
+            .SelectMany(e => e.GetTagList())
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
     }
 
     private void ViewEntry(int id)

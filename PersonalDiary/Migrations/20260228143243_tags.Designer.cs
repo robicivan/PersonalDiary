@@ -12,15 +12,15 @@ using PersonalDiary.Data;
 namespace PersonalDiary.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260213182057_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260228143243_tags")]
+    partial class tags
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.20")
+                .HasAnnotation("ProductVersion", "9.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -33,15 +33,19 @@ namespace PersonalDiary.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<bool>("IsEncrypted")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Title")
                         .IsRequired()

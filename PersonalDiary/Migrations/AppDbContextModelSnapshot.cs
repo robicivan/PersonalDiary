@@ -40,6 +40,10 @@ namespace PersonalDiary.Migrations
                     b.Property<bool>("IsEncrypted")
                         .HasColumnType("bit");
 
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");

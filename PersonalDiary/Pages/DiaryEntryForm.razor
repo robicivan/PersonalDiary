@@ -1,4 +1,4 @@
-﻿@page "/diary/new"
+@page "/diary/new"
 @page "/diary/{id:int}"
 @inject AppDbContext DbContext
 @inject CurrentUserService CurrentUser
@@ -24,6 +24,27 @@ else
             <textarea @bind="entryModel.Content" class="form-control" rows="10"></textarea>
         </div>
 
+        <div class="form-group mb-3">
+            <label>Oznake (tagovi):</label>
+            <div class="d-flex gap-2 flex-wrap mb-2">
+                @foreach (var tag in currentTags)
+                {
+                    <span class="badge bg-primary d-inline-flex align-items-center gap-1" style="font-size:0.85rem;">
+                        @tag
+                        <button type="button" class="btn-close btn-close-white btn-sm" style="font-size:0.6rem;"
+                                @onclick="() => RemoveTag(tag)" aria-label="Ukloni"></button>
+                    </span>
+                }
+            </div>
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Dodaj oznaku"
+                       @bind="newTagInput" @bind:event="oninput"
+                       @onkeydown="HandleTagKeyDown" />
+                <button type="button" class="btn btn-outline-secondary" @onclick="AddTag">Dodaj</button>
+            </div>
+            <small class="text-muted">Klikni Dodaj za dodavanje, x za uklanjanje</small>
+        </div>
+
         <div class="form-check mb-3">
             <input type="checkbox" @bind="entryModel.IsEncrypted" class="form-check-input" id="encryptCheck" />
             <label class="form-check-label" for="encryptCheck">Šifriraj sadržaj</label>
@@ -40,29 +61,53 @@ else
     [Parameter] public int Id { get; set; }
 
     private EntryModel entryModel = new();
+    private List<string> currentTags = new();
+    private string newTagInput = "";
 
     protected override async Task OnInitializedAsync()
     {
         if (!CurrentUser.IsAuthenticated)
             return;
 
-        if (Id != 0)  // uređivanje postojećeg
+        if (Id != 0)
         {
             var existing = await DbContext.DiaryEntries.FindAsync(Id);
             if (existing != null && existing.UserId == CurrentUser.UserId)
             {
                 entryModel.Title = existing.Title;
-                // Dešifriraj sadržaj ako je šifriran
                 entryModel.Content = existing.IsEncrypted
                     ? EncryptionService.Decrypt(existing.Content)
                     : existing.Content;
                 entryModel.IsEncrypted = existing.IsEncrypted;
+                currentTags = existing.GetTagList();
             }
             else
             {
-                // Ako zapis ne pripada korisniku ili ne postoji
                 NavigationManager.NavigateTo("/diary");
             }
+        }
+    }
+
+    private void AddTag()
+    {
+        var tag = newTagInput.Trim().ToLowerInvariant().Replace(",", "");
+        if (!string.IsNullOrWhiteSpace(tag) && !currentTags.Contains(tag))
+        {
+            currentTags.Add(tag);
+        }
+        newTagInput = "";
+    }
+
+    private void RemoveTag(string tag)
+    {
+        currentTags.Remove(tag);
+    }
+
+    private void HandleTagKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            AddTag();
         }
     }
 
@@ -87,6 +132,7 @@ else
 
         entry.Title = entryModel.Title;
         entry.IsEncrypted = entryModel.IsEncrypted;
+        entry.Tags = string.Join(",", currentTags);
 
         if (entryModel.IsEncrypted)
         {
@@ -94,7 +140,7 @@ else
         }
         else
         {
-            entry.Content = entryModel.Content; // čisti tekst
+            entry.Content = entryModel.Content;
         }
 
         await DbContext.SaveChangesAsync();
@@ -110,6 +156,6 @@ else
     {
         public string Title { get; set; } = "";
         public string Content { get; set; } = "";
-        public bool IsEncrypted { get; set; } = true; // enkriptirano
+        public bool IsEncrypted { get; set; } = true;
     }
 }

@@ -3,6 +3,7 @@
 @inject CurrentUserService CurrentUser
 @inject NavigationManager NavigationManager
 @inject NavigationManager Nav
+@inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage LocalStorage
 
 <h3>Moj dnevnik</h3>
 
@@ -74,6 +75,28 @@ else
             return;
 
         await LoadEntries();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (!CurrentUser.IsAuthenticated)
+        {
+            try
+            {
+                var userIdResult = await LocalStorage.GetAsync<int>("userId");
+                var usernameResult = await LocalStorage.GetAsync<string>("username");
+
+                if (userIdResult.Success && usernameResult.Success)
+                {
+                    CurrentUser.SetUser(userIdResult.Value, usernameResult.Value!);
+                    await LoadEntries();
+                    StateHasChanged();
+                }
+            }
+            catch { }
+        }
     }
 
     private async Task LoadEntries()

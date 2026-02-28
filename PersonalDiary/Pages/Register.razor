@@ -1,6 +1,8 @@
 @page "/register"
 @inject AuthService AuthService
 @inject NavigationManager NavigationManager
+@inject CurrentUserService CurrentUser
+@inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage LocalStorage
 @using System.ComponentModel.DataAnnotations
 
 <h3>Registracija</h3>
@@ -52,6 +54,24 @@
         {
             errorMessage = "Korisničko ime već postoji.";
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        if (CurrentUser.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/diary");
+            return;
+        }
+        try
+        {
+            var userIdResult = await LocalStorage.GetAsync<int>("userId");
+            var usernameResult = await LocalStorage.GetAsync<string>("username");
+            if (userIdResult.Success && usernameResult.Success)
+                NavigationManager.NavigateTo("/diary");
+        }
+        catch { }
     }
 
     public class RegisterModel

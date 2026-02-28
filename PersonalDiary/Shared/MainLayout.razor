@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @inject CurrentUserService CurrentUser
 @inject NavigationManager NavigationManager
+@inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage LocalStorage
 
 <PageTitle>PersonalDiary</PageTitle>
 
@@ -29,9 +30,30 @@
 </div>
 
 @code {
-    private void Logout()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !CurrentUser.IsAuthenticated)
+        {
+            try
+            {
+                var userIdResult = await LocalStorage.GetAsync<int>("userId");
+                var usernameResult = await LocalStorage.GetAsync<string>("username");
+
+                if (userIdResult.Success && usernameResult.Success)
+                {
+                    CurrentUser.SetUser(userIdResult.Value, usernameResult.Value!);
+                    StateHasChanged();
+                }
+            }
+            catch { }
+        }
+    }
+
+    private async Task Logout()
     {
         CurrentUser.Clear();
+        await LocalStorage.DeleteAsync("userId");
+        await LocalStorage.DeleteAsync("username");
         NavigationManager.NavigateTo("/", true);
     }
 }

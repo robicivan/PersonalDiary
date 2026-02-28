@@ -2,6 +2,7 @@
 @inject AuthService AuthService
 @inject CurrentUserService CurrentUser
 @inject NavigationManager NavigationManager
+@inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage LocalStorage
 @using System.ComponentModel.DataAnnotations
 
 <h3>Prijava</h3>
@@ -38,12 +39,32 @@
         if (user != null)
         {
             CurrentUser.SetUser(user.Id, user.Username);
+            await LocalStorage.SetAsync("userId", user.Id);
+            await LocalStorage.SetAsync("username", user.Username);
             NavigationManager.NavigateTo("/diary");
         }
         else
         {
             errorMessage = "Pogrešno korisničko ime ili lozinka.";
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        if (CurrentUser.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/diary");
+            return;
+        }
+        try
+        {
+            var userIdResult = await LocalStorage.GetAsync<int>("userId");
+            var usernameResult = await LocalStorage.GetAsync<string>("username");
+            if (userIdResult.Success && usernameResult.Success)
+                NavigationManager.NavigateTo("/diary");
+        }
+        catch { }
     }
 
     public class LoginModel

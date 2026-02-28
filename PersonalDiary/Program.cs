@@ -16,6 +16,7 @@ namespace PersonalDiary
             builder.Services.AddScoped<EncryptionService>();
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<CurrentUserService>();
+            builder.Services.AddScoped<ThemeService>();
 
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();

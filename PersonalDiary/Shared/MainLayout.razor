@@ -1,11 +1,13 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject CurrentUserService CurrentUser
 @inject NavigationManager NavigationManager
+@inject ThemeService ThemeService
 @inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage LocalStorage
+@implements IDisposable
 
 <PageTitle>PersonalDiary</PageTitle>
 
-<div class="page">
+<div class="page @(ThemeService.IsDark ? "dark-theme" : "")">
     <div class="sidebar">
         <NavMenu />
     </div>
@@ -21,6 +23,18 @@
             {
                 <a href="/login">Prijava</a>
             }
+
+            <button class="btn btn-sm theme-toggle ms-3" @onclick="ToggleTheme"
+                    title="@(ThemeService.IsDark ? "Svijetla tema" : "Tamna tema")">
+                @if (ThemeService.IsDark)
+                {
+                    <span>☀️ Svijetla</span>
+                }
+                else
+                {
+                    <span>🌙 Tamna</span>
+                }
+            </button>
         </div>
 
         <article class="content px-4">
@@ -32,21 +46,42 @@
 @code {
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !CurrentUser.IsAuthenticated)
+        if (firstRender)
         {
             try
             {
-                var userIdResult = await LocalStorage.GetAsync<int>("userId");
-                var usernameResult = await LocalStorage.GetAsync<string>("username");
-
-                if (userIdResult.Success && usernameResult.Success)
+                // Restore auth
+                if (!CurrentUser.IsAuthenticated)
                 {
-                    CurrentUser.SetUser(userIdResult.Value, usernameResult.Value!);
-                    StateHasChanged();
+                    var userIdResult = await LocalStorage.GetAsync<int>("userId");
+                    var usernameResult = await LocalStorage.GetAsync<string>("username");
+                    if (userIdResult.Success && usernameResult.Success)
+                    {
+                        CurrentUser.SetUser(userIdResult.Value, usernameResult.Value!);
+                    }
                 }
+
+                // Restore theme
+                var themeResult = await LocalStorage.GetAsync<bool>("darkTheme");
+                if (themeResult.Success && themeResult.Value != ThemeService.IsDark)
+                {
+                    ThemeService.SetTheme(themeResult.Value);
+                }
+
+                StateHasChanged();
             }
             catch { }
         }
+    }
+
+    private async Task ToggleTheme()
+    {
+        ThemeService.Toggle();
+        try
+        {
+            await LocalStorage.SetAsync("darkTheme", ThemeService.IsDark);
+        }
+        catch { }
     }
 
     private async Task Logout()
@@ -55,5 +90,15 @@
         await LocalStorage.DeleteAsync("userId");
         await LocalStorage.DeleteAsync("username");
         NavigationManager.NavigateTo("/", true);
+    }
+
+    protected override void OnInitialized()
+    {
+        ThemeService.OnThemeChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= StateHasChanged;
     }
 }
